@@ -11,7 +11,14 @@ import pickle
 class tao_vanilla_model:
     def __init__(self) -> None:
         self.taovanilla = linear_model.LinearRegression()
+        self.resolution = 48#assume 48 HH in day 
+        self.horizon = self.resolution#and its one day ahead 
 
+    def __init__(self,res) -> None:
+        self.taovanilla = linear_model.LinearRegression()
+        self.resolution = res
+        self.horizon = self.resolution
+    
     def __str__(self) -> str:
         return 'Linear Regression Benchmark Model'
 
@@ -26,44 +33,7 @@ class tao_vanilla_model:
         
         return
     
-    def train_model(self,covariates,target):
-        
-        
-        TMP = np.array(flxnet_hour['Air Temperature'])
-        hod=np.array(pd.DatetimeIndex(flxnet_hour.Timestamp).hour)
-        moh=np.array(pd.DatetimeIndex(flxnet_hour.Timestamp).minute)
-        mon=np.array(pd.DatetimeIndex(flxnet_hour.Timestamp).month)
-        dow=np.array(pd.DatetimeIndex(flxnet_hour.Timestamp).dayofweek)
-        new_format = "%d-%b-%Y %H:%M:%S"
-        hour_trends=hour_trend_of_year(flxnet_hour.Timestamp,new_format)
-        
-        X=np.array([hour_trends,dow*hod,mon,mon*TMP,mon*TMP*TMP,mon*TMP*TMP*TMP,hod*TMP,hod*TMP*TMP,hod*TMP*TMP*TMP]).T
-
-        target=np.array(flxnet_hour.crawfordCrescent_F5[24:])
-        trainX=X[0:8736]
-        trainTarget=target[0:8736]
-        
-        self.taovanilla.fit(trainX,trainTarget)
-
-        return
-    
-    def forecast(self,covariates,horizon):
-        hour_trends=hour_trend_of_year(Roosevelt_station.Timestamp)
-        TMP_test = np.array(Roosevelt_station['Temperature_2m'])
-        hod_test=np.array(pd.DatetimeIndex(Roosevelt_station.Timestamp).hour)
-        moh_test=np.array(pd.DatetimeIndex(Roosevelt_station.Timestamp).minute)
-        mon_test=np.array(pd.DatetimeIndex(Roosevelt_station.Timestamp).month)
-        dow_test=np.array(pd.DatetimeIndex(Roosevelt_station.Timestamp).dayofweek)
-        X_test = np.array([hour_trends, dow_test * hod_test, mon_test, mon_test * TMP_test, mon_test * TMP_test * TMP_test, mon_test * TMP_test * TMP_test * TMP_test, hod_test * TMP_test, hod_test * TMP_test * TMP_test, hod_test * TMP_test * TMP_test * TMP_test], dtype=object).T
-
-        testX=X_test
-        targetHat=self.taovanilla.predict(testX)
-        
-        targetHat1 = pd.DataFrame({"Timestamp": Roosevelt_station.Timestamp, "Data": targetHat})
-        targetHat=targetHat[14:]
-
-        return
-    
+    #don't understand this... 
     def hour_trend_of_year(timestamps: List[str], timestamp_format="%d/%m/%Y %H:%M") -> List[int]:
         def _single_hour_trend(timestamp_obj):
             days_in_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
@@ -79,4 +49,99 @@ class tao_vanilla_model:
             return hour_trend
 
         hour_trends = [_single_hour_trend(datetime.strptime(ts, timestamp_format)) for ts in timestamps]
+        
         return hour_trends
+    
+    def form_lagged_target(load,lags):
+        Y=np.array([])
+
+        return Y
+
+    def form_vanilla_covariates(hrTrnd,ambT,hod,mod,mon,dow):
+        X=np.array([hrTrnd,dow*hod,mon,mon*ambT,mon*ambT*ambT,mon*ambT*ambT*ambT,hod*ambT,hod*ambT*ambT,hod*ambT*ambT*ambT]).T
+
+        return X
+    
+    def train_model(self,timestamp,temperature,load):        
+        hod=np.array(timestamp.hour)
+        mod=np.array(timestamp.minute)
+        mon=np.array(timestamp.month)
+        dow=np.array(timestamp.dayofweek)
+        new_format = "%d-%b-%Y %H:%M:%S"
+        hour_trend=tao_vanilla_model.hour_trend_of_year(timestamp,new_format)
+
+        X=tao_vanilla_model.form_vanilla_covariates(hour_trend,temperature,hod,mod,mon,dow)
+        Y=tao_vanilla_model.form_lagged_target(load,self.horizon)
+
+        (T,d)=X.shape
+
+        X=np.concat(X[:T-self.horizon],Y[:T-self.horizon,1])
+        Y=Y[1+self.horizon:,2]
+
+        self.taovanilla.fit(X,Y)
+
+        return
+    
+    def forecast(self,timestamp,temperature,load):
+        return self.forecast(timestamp,temperature,load,self.horizon)
+
+    def forecast(self,timestamp,temperature,load,horizon):
+        #to do - if horizon is multiple of existing model - apply recursively
+        #if not, apply recursively and interpolate
+        hod=np.array(timestamp.hour)
+        mod=np.array(timestamp.minute)
+        mon=np.array(timestamp.month)
+        dow=np.array(timestamp.dayofweek)
+        new_format = "%d-%b-%Y %H:%M:%S"
+        hour_trend=tao_vanilla_model.hour_trend_of_year(timestamp,new_format)
+
+        X=tao_vanilla_model.form_vanilla_covariates(hour_trend,temperature,hod,mod,mon,dow)
+        
+        yHat=self.taovanilla.predict(X)
+        
+        return yHat
+
+flxnet=pd.read_csv('flex_networks.csv')
+
+taovanilla = tao_vanilla_model(48)
+
+
+hour_trends=hour_trend_of_year(Roosevelt_station.Timestamp)
+TMP_test = np.array(Roosevelt_station['Temperature_2m'])
+hod_test=np.array(pd.DatetimeIndex(Roosevelt_station.Timestamp).hour)
+moh_test=np.array(pd.DatetimeIndex(Roosevelt_station.Timestamp).minute)
+mon_test=np.array(pd.DatetimeIndex(Roosevelt_station.Timestamp).month)
+dow_test=np.array(pd.DatetimeIndex(Roosevelt_station.Timestamp).dayofweek)
+
+observed=flxnet.kinnessPark_F4[0:-49]
+
+#data = df['observed_values'].values.reshape(-1, 1)
+hod=np.array(pd.DatetimeIndex(flxnet.Timestamp[0:-49]).hour)
+moh=np.array(pd.DatetimeIndex(flxnet.Timestamp[0:-49]).minute)
+mon=np.array(pd.DatetimeIndex(flxnet.Timestamp[0:-49]).month)
+dow=np.array(pd.DatetimeIndex(flxnet.Timestamp[0:-49]).dayofweek)
+
+X=np.array([hod,moh,mon,dow,observed]).T
+
+target=np.array(flxnet.kinnessPark_F4[49:])
+
+trainX=X[0:30*48,:]
+trainTarget=target[0:30*48]
+
+taovanilla.fit(trainX,trainTarget)
+
+taovanilla.save_model_to_disk('flex_networks_stlf.pkl')
+
+testX=X[1+(30*48):60*48,:]
+testTarget=target[1+(30*48):60*48]
+
+targetHat=taovanilla.forecast(testX)
+
+error=testTarget-targetHat
+
+#next thing to do is turn the error into a mean and covariance
+blockErr=np.reshape(error[0:-47],(-1,48))
+muErr=np.mean(blockErr,axis=0)
+sigErr=np.cov(blockErr,rowvar=False)
+
+#estimate intra-day error using conditional Gaussian form of joint error
