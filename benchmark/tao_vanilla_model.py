@@ -82,6 +82,16 @@ class tao_vanilla_model:
 
         return
     
+    def evaluate_error_stats(self,Y,Yhat):
+        error=Y-Yhat
+
+        #next thing to do is turn the error into a mean and covariance
+        blockErr=np.reshape(error[0:-self.horizon-1],(-1,self.horizon))
+        mu=np.mean(blockErr,axis=0)
+        sigma=np.cov(blockErr,rowvar=False)
+
+        return mu,sigma
+
     def forecast(self,timestamp,temperature,load):
         return self.forecast(timestamp,temperature,load,self.horizon)
 
@@ -105,43 +115,19 @@ flxnet=pd.read_csv('flex_networks.csv')
 
 taovanilla = tao_vanilla_model(48)
 
+ts=pd.DatetimeIndex(flxnet.Timestamp)
+ld=flxnet.kinnessPark_F4
+ld2=flxnet.kinnessPark_F2
+aT=flxnet.temperature
 
-hour_trends=hour_trend_of_year(Roosevelt_station.Timestamp)
-TMP_test = np.array(Roosevelt_station['Temperature_2m'])
-hod_test=np.array(pd.DatetimeIndex(Roosevelt_station.Timestamp).hour)
-moh_test=np.array(pd.DatetimeIndex(Roosevelt_station.Timestamp).minute)
-mon_test=np.array(pd.DatetimeIndex(Roosevelt_station.Timestamp).month)
-dow_test=np.array(pd.DatetimeIndex(Roosevelt_station.Timestamp).dayofweek)
-
-observed=flxnet.kinnessPark_F4[0:-49]
-
-#data = df['observed_values'].values.reshape(-1, 1)
-hod=np.array(pd.DatetimeIndex(flxnet.Timestamp[0:-49]).hour)
-moh=np.array(pd.DatetimeIndex(flxnet.Timestamp[0:-49]).minute)
-mon=np.array(pd.DatetimeIndex(flxnet.Timestamp[0:-49]).month)
-dow=np.array(pd.DatetimeIndex(flxnet.Timestamp[0:-49]).dayofweek)
-
-X=np.array([hod,moh,mon,dow,observed]).T
-
-target=np.array(flxnet.kinnessPark_F4[49:])
-
-trainX=X[0:30*48,:]
-trainTarget=target[0:30*48]
-
-taovanilla.fit(trainX,trainTarget)
-
+taovanilla.train_model(ts,aT,ld)
 taovanilla.save_model_to_disk('flex_networks_stlf.pkl')
 
-testX=X[1+(30*48):60*48,:]
-testTarget=target[1+(30*48):60*48]
+targetHat=taovanilla.forecast(ts,aT,ld2)
 
-targetHat=taovanilla.forecast(testX)
-
-error=testTarget-targetHat
+error=ld2-targetHat
 
 #next thing to do is turn the error into a mean and covariance
-blockErr=np.reshape(error[0:-47],(-1,48))
-muErr=np.mean(blockErr,axis=0)
-sigErr=np.cov(blockErr,rowvar=False)
+muErr,sigErr=taovanilla.evaluate_error_stats(testTarget,targetHat)
 
 #estimate intra-day error using conditional Gaussian form of joint error
