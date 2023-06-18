@@ -52,8 +52,20 @@ class tao_vanilla_model:
         
         return hour_trends
     
+    #def hour_of_year(dt): 
+    #    beginning_of_year = datetime(dt.year, 1, 1, tzinfo=dt.tzinfo)
+    #    return (dt - beginning_of_year).total_seconds() // 3600
+    
+    def hour_of_year(dt): 
+        return dt.hour+dt.dayofyear*24
+    
     def form_lagged_target(load,lags):
-        Y=np.array([])
+        Y=load
+        T=Y.shape[0]
+
+        for lag in lags:
+            Y=np.delete(Y,slice(T-lag-1,T-1),axis=0)
+            Y=np.concat(Y,load[lag:])
 
         return Y
 
@@ -67,11 +79,12 @@ class tao_vanilla_model:
         mod=np.array(timestamp.minute)
         mon=np.array(timestamp.month)
         dow=np.array(timestamp.dayofweek)
-        new_format = "%d-%b-%Y %H:%M:%S"
-        hour_trend=tao_vanilla_model.hour_trend_of_year(timestamp,new_format)
+        #new_format = "%d-%b-%Y %H:%M:%S"
+        #hour_trend=tao_vanilla_model.hour_trend_of_year(timestamp,new_format)
+        hour_trend=tao_vanilla_model.hour_of_year(timestamp)
 
         X=tao_vanilla_model.form_vanilla_covariates(hour_trend,temperature,hod,mod,mon,dow)
-        Y=tao_vanilla_model.form_lagged_target(load,self.horizon)
+        Y=tao_vanilla_model.form_lagged_target(load,[self.horizon])
 
         (T,d)=X.shape
 
@@ -102,9 +115,10 @@ class tao_vanilla_model:
         mod=np.array(timestamp.minute)
         mon=np.array(timestamp.month)
         dow=np.array(timestamp.dayofweek)
-        new_format = "%d-%b-%Y %H:%M:%S"
-        hour_trend=tao_vanilla_model.hour_trend_of_year(timestamp,new_format)
-
+        #new_format = "%d-%b-%Y %H:%M:%S"
+        #hour_trend=tao_vanilla_model.hour_trend_of_year(timestamp,new_format)
+        hour_trend=tao_vanilla_model.hour_of_year(timestamp)
+        
         X=tao_vanilla_model.form_vanilla_covariates(hour_trend,temperature,hod,mod,mon,dow)
         
         yHat=self.taovanilla.predict(X)
@@ -118,7 +132,7 @@ taovanilla = tao_vanilla_model(48)
 ts=pd.DatetimeIndex(flxnet.Timestamp)
 ld=flxnet.kinnessPark_F4
 ld2=flxnet.kinnessPark_F2
-aT=flxnet.temperature
+aT=flxnet['Air Temperature']
 
 taovanilla.train_model(ts,aT,ld)
 taovanilla.save_model_to_disk('flex_networks_stlf.pkl')
