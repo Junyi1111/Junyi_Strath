@@ -77,7 +77,7 @@ class load_forecast:
 
 # Example usage:
 forecast_horizon = 48
-file_url = "https://raw.githubusercontent.com/Junyi1111/Junyi_Strath/main/flex_networks.csv?token=GHSAT0AAAAAACDXD34WHFVAL6TTJDHT64M2ZEU4AVA"
+file_url = "https://raw.githubusercontent.com/Junyi1111/Junyi_Strath/main/benchmark/flex_networks.csv"
 predictor = load_forecast(file_url)
 predictor.load_data()
 predictor.preprocess()
