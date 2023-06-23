@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[18]:
-
-
 import pandas as pd
 from sklearn import linear_model
 import matplotlib.pyplot as plt
@@ -84,22 +78,6 @@ predictor.preprocess()
 predictor.train_and_predict(forecast_horizon)
 predictor.plot_results()
 predictor.save_results_to_csv(forecast_horizon)
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
 
 
 
