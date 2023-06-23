@@ -64,6 +64,30 @@ class load_forecast:
         })
         filename = f'prediction_results_with_{forecast_horizon}.csv'
         result.to_csv('filename.csv', index=False)
+    def plot_error_cdf(self):
+        # calculate histogram
+        hist, bin_edges = np.histogram(self.error, bins='auto', density=True)
+        cum_values = np.zeros(bin_edges.shape)
+        cum_values[1:] = np.cumsum(hist*np.diff(bin_edges))
+
+        # plot histogram + cumulative histogram
+        fig, ax1 = plt.subplots(figsize=(10, 6))
+
+        color = 'tab:blue'
+        ax1.set_xlabel('Error')
+        ax1.set_ylabel('PDF', color=color)
+        ax1.hist(bin_edges[:-1], bin_edges, weights=hist, color=color, alpha=0.6)
+        ax1.tick_params(axis='y', labelcolor=color)
+
+        ax2 = ax1.twinx()
+        color = 'tab:red'
+        ax2.set_ylabel('CDF', color=color)
+        ax2.plot(bin_edges, cum_values, color=color)
+        ax2.tick_params(axis='y', labelcolor=color)
+
+        fig.tight_layout()
+        plt.title('PDF and CDF of Prediction Error')
+        plt.show()
 
 # Example usage:
 forecast_horizon = 48
@@ -74,6 +98,7 @@ predictor.preprocess()
 predictor.train_and_predict(forecast_horizon)
 predictor.plot_results()
 predictor.save_results_to_csv(forecast_horizon)
+predictor.plot_error_cdf()
 
 
 
