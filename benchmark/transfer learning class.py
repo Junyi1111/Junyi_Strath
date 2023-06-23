@@ -30,17 +30,15 @@ class load_forecast:
         y = self.data['crawfordCrescent_F5'].values
 
         # Shift the target forecast_horizon units ahead
-        target = y[forecast_horizon:]
-        trainX = X[:15984]  # Use the first 15984 samples for training
-        trainTarget = target[:15984]  # Use the first 15984 samples for training
+        target = y[forecast_horizon:]  # predict value is 48 after
+        trainX = X[:15984]  # Use the first 11 months samples for training
+        trainTarget = target[:15984]  # Use the first 11 months samples for training
         self.model.fit(trainX, trainTarget)
-        # Note that we need to keep the last forecast_horizon units of X as well, since they are needed for future prediction
         self.testX = X[15984:-forecast_horizon]
         self.testDates = self.data['Timestamp'][15984+forecast_horizon:]
 
         
 
-        # Use all but the last forecast_horizon units for prediction
         self.predictedY = self.model.predict(self.testX)
         # The actual values are forecast_horizon units ahead
         self.testY = target[15984:]
@@ -57,9 +55,7 @@ class load_forecast:
         ax.legend()
         plt.show()
 
-    def save_results_to_csv(self,forecast_horizon):
-        # Adjust the dates and actual values to match the length of predicted values
-        
+    def save_results_to_csv(self,forecast_horizon):        
         result = pd.DataFrame({
             'Date': self.testDates,
             'Predicted': self.predictedY,
