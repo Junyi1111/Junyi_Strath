@@ -20,19 +20,19 @@ class load_forecast:
         self.data['dayofweek'] = self.data['Timestamp'].dt.dayofweek
 
     def train_and_predict(self, forecast_horizon):
-        TMP = self.data['Air Temperature'].values
+        TMP = self.data['Air Temperature'].values#can we be sure these labels will always be in the data
         hod = self.data['hour'].values
         moh = self.data['minute'].values
         mon = self.data['month'].values
         dow = self.data['dayofweek'].values
 
         X=np.array([dow*hod,mon,mon*TMP,mon*TMP*TMP,mon*TMP*TMP*TMP,hod*TMP,hod*TMP*TMP,hod*TMP*TMP*TMP]).T
-        y = self.data['crawfordCrescent_F5'].values
+        y = self.data['crawfordCrescent_F5'].values#hardcoded target!
 
         # Shift the target forecast_horizon units ahead
         target = y[forecast_horizon:]  # predict value is 48 after
         trainX = X[:15984]  # Use the first 11 months samples for training
-        trainTarget = target[:15984]  # Use the first 11 months samples for training
+        trainTarget = target[:15984]  # Use the first 11 months samples for training - again - hardcoding
         self.model.fit(trainX, trainTarget)
         self.testX = X[15984:-forecast_horizon]
         self.testDates = self.data['Timestamp'][15984+forecast_horizon:]
@@ -42,8 +42,9 @@ class load_forecast:
         self.predictedY = self.model.predict(self.testX)
         # The actual values are forecast_horizon units ahead
         self.testY = target[15984:]
-        self.error = self.testY - self.predictedY
+        self.error = self.testY - self.predictedY#this is good
 
+    #don't couple to UI - may not be running this on a system with a display
     def plot_results(self):
         fig, ax = plt.subplots()
         x_values = list(range(len(self.testY)))
@@ -55,6 +56,7 @@ class load_forecast:
         ax.legend()
         plt.show()
 
+    #don't couple to read/write of data
     def save_results_to_csv(self,forecast_horizon):        
         result = pd.DataFrame({
             'Date': self.testDates,
@@ -64,6 +66,8 @@ class load_forecast:
         })
         filename = f'prediction_results_with_{forecast_horizon}.csv'
         result.to_csv('filename.csv', index=False)
+    
+    #this is good - we can move it to a driver file
     def plot_error_cdf(self):
         # calculate histogram
         hist, bin_edges = np.histogram(self.error, bins='auto', density=True)
@@ -99,6 +103,3 @@ predictor.train_and_predict(forecast_horizon)
 predictor.plot_results()
 predictor.save_results_to_csv(forecast_horizon)
 predictor.plot_error_cdf()
-
-
-
