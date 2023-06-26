@@ -43,7 +43,48 @@ class load_forecast:
         # The actual values are forecast_horizon units ahead
         self.testY = target[15984:]
         self.error = self.testY - self.predictedY#this is good
+    def bayesian_update(self, start_date, end_date, forecast_start_date, forecast_end_date):
+        # Generate error data
+        error_df = pd.DataFrame(self.error, columns=['error'])
+        error_df.index = self.data['Timestamp'][15984+forecast_horizon:]  # modified line here
+        error_df.index.name = 'Timestamp'
 
+        # Select specific error data
+        specific_error = error_df.loc[start_date:end_date].copy()
+        forecast_error=error_df.loc[forecast_start_date:forecast_end_date].copy()
+
+        # Calculate mean and variance
+        mean_error = specific_error['error'].mean()
+        var_error = specific_error['error'].var()
+
+        # Initialize list to store updated means
+        updated_means = []
+        
+        # Define the initial "recent" errors as the first three errors
+        recent_i_errors = specific_error.iloc[:2]
+
+        # Mean and variance of recent_i_errors
+        mean_recent_i_errors = recent_i_errors['error'].mean()
+        var_recent_i_errors = recent_i_errors['error'].var()
+
+        # Covariance of recent_i_errors with all errors
+        cov_recent_i_errors = recent_i_errors['error'].cov(specific_error['error'])
+
+        # Start at 48th observation and go until the end
+        for i in range(48):
+            # New observation, 48 steps ahead
+            new_observation = specific_error.iloc[i].error
+
+            # Bayesian updating rule for mean
+            updated_mean = mean_error + cov_recent_i_errors * (var_recent_i_errors**(-1)) * (new_observation - mean_recent_i_errors)
+            updated_means.append(updated_mean)
+
+        # Add updated means to specific_error DataFrame
+        forecast_error['Updated Mean'] = updated_means
+
+        # Compare original errors to updated means
+        forecast_error[['error', 'Updated Mean']].plot()
+        plt.show()
     #don't couple to UI - may not be running this on a system with a display
     def plot_results(self):
         fig, ax = plt.subplots()
@@ -103,3 +144,8 @@ predictor.train_and_predict(forecast_horizon)
 predictor.plot_results()
 predictor.save_results_to_csv(forecast_horizon)
 predictor.plot_error_cdf()
+start_date = '2014-12-01 00:30:00'
+end_date = '2014-12-02 00:00:00'
+forecast_start_date = '2014-12-02 00:30:00'
+forecast_end_date = '2014-12-03 00:00:00'
+predictor.bayesian_update(start_date, end_date, forecast_start_date, forecast_end_date)
