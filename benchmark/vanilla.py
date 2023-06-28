@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[38]:
-
-
 import pandas as pd
 from sklearn.linear_model import LinearRegression
 import numpy as np
