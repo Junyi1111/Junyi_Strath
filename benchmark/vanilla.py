@@ -53,7 +53,7 @@ class tao_vanilla_model:
         y = load[horizon:]  
         self.taovanilla.fit(x, y)
         return 
-    def forecast(self,timestamp,temperature,horizon):
+    def forecast(self,timestamp,temperature,horizon,load):
         #to do - if horizon is multiple of existing model - apply recursively
         #if not, apply recursively and interpolate
         hod=np.array(timestamp.hour)#roll these forward for increased horizons
@@ -63,10 +63,12 @@ class tao_vanilla_model:
         hour_trend=tao_vanilla_model.hour_of_year(timestamp)
         x=tao_vanilla_model.form_vanilla_covariates(hour_trend,temperature,hod,mod,mon,dow)
         x=x[:-horizon]
-        yHat=self.taovanilla.predict(X)
+        yHat=self.taovanilla.predict(x)
+        y=load[horizon:]
         result=pd.DataFrame({
-            'Predicted': yHat[:-horizon],
+            'Predicted': yHat,
             'Time': timestamp[horizon:],
+            'Actual': y
         })
         return result
    
@@ -74,43 +76,14 @@ class tao_vanilla_model:
 
 # Example usage:
 flxnet=pd.read_csv('C:/Users/isb21218/Downloads/flex_networks.csv')
-ts=pd.DatetimeIndex(flxnet.Timestamp)
-load=flxnet.kinnessPark_F4
-aT=flxnet['Air Temperature']
+ts1=pd.DatetimeIndex(flxnet.Timestamp)[:15984]
+load1=flxnet.kinnessPark_F4[:15984]
+aT1=flxnet['Air Temperature'][:15984]
 horizon=48
+ts2=pd.DatetimeIndex(flxnet.Timestamp)[15984:]
+load2=flxnet.kinnessPark_F4[15984:]
+aT2=flxnet['Air Temperature'][15984:]
+
 model= tao_vanilla_model(label='Linear Regression Benchmark Model')
-model.train_model(ts, aT, horizon, load)
-model.forecast()
-
-
-# In[29]:
-
-
-predictions
-
-
-# In[30]:
-
-
-errors
-
-
-# In[34]:
-
-
-fig, ax = plt.subplots()
-x_values = list(range(len(load[48:])))
-ax.plot(x_values, load[48:], color='blue', label='Actual values')
-ax.plot(x_values, predictions, color='red', label='Predicted values')
-ax.set_xlabel('Time')
-ax.set_ylabel('Value')
-ax.set_title('Actual vs Predicted Values')
-ax.legend()
-plt.show()
-
-
-# In[ ]:
-
-
-
-
+model.train_model(ts1, aT1, horizon, load1)
+model.forecast(ts2, aT2, horizon, load2)
