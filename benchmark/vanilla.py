@@ -4,6 +4,7 @@ from sklearn import linear_model
 import numpy as np
 import pickle
 import matplotlib.pyplot as plt
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 class tao_vanilla_model:
     def __init__(self, label='Linear Regression Benchmark Model')-> None:
