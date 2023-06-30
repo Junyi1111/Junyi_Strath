@@ -119,11 +119,23 @@ secondhalf_error = np.array(secondhalf_error)
 secondhalf_error_reshaped = secondhalf_error.reshape((100,48))
 secondhalf_error=secondhalf_error_reshaped.T
 
-
+updated_error1 = updated_error.T.flatten()
+error_original=result.Actual[4800:]-result.Predicted[4800:]
+error_update=result.Actual[4800:]-(result.Predicted[4800:]+updated_error1)
+mae_original = mean_absolute_error(result.Actual[4800:], result.Predicted[4800:])
+mse_original = mean_squared_error(result.Actual[4800:], result.Predicted[4800:])
+mae_update = mean_absolute_error(result.Actual[4800:], result.Predicted[4800:]+updated_error1)
+mse_update = mean_squared_error(result.Actual[4800:], result.Predicted[4800:]+updated_error1)
+def smape(y_true, y_pred):
+    return np.mean(2.0 * np.abs(y_true - y_pred) / (np.abs(y_true) + np.abs(y_pred))) * 100
+mape_original = smape(result.Actual[4800:], result.Predicted[4800:])
+mape_update = smape(result.Actual[4800:], result.Predicted[4800:]+updated_error1)
 
 fig, axs = plt.subplots(4, 5, figsize=(15, 12))
 errors = []
 
+print("Original Errors - MAE: ", mae_original, ", MSE: ", mse_original, ", MAPE: ", mape_original)
+print("Updated Errors - MAE: ", mae_update, ", MSE: ", mse_update, ", MAPE: ", mape_update)
 for i in range(20):
     row = i // 5
     col = i % 5
