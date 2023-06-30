@@ -1,11 +1,12 @@
 import pandas as pd
 from sklearn.linear_model import LinearRegression
+from sklearn import linear_model
 import numpy as np
 import pickle
 import matplotlib.pyplot as plt
 
 class tao_vanilla_model:
-    def __init__(self, label='Linear Regression Benchmark Model') -> None:
+    def __init__(self, label='Linear Regression Benchmark Model')-> None:
         self.taovanilla = linear_model.LinearRegression()
 
     def __str__(self) -> str:
@@ -71,11 +72,11 @@ class tao_vanilla_model:
             'Actual': y
         })
         return result
-   
+
 
 
 # Example usage:
-flxnet=pd.read_csv('C:/Users/isb21218/Downloads/flex_networks.csv')
+flxnet=pd.read_csv('https://raw.githubusercontent.com/Junyi1111/Junyi_Strath/main/benchmark/flex_networks.csv')
 ts1=pd.DatetimeIndex(flxnet.Timestamp)[:15984]
 load1=flxnet.kinnessPark_F4[:15984]
 aT1=flxnet['Air Temperature'][:15984]
@@ -87,3 +88,55 @@ aT2=flxnet['Air Temperature'][15984:]
 model= tao_vanilla_model(label='Linear Regression Benchmark Model')
 model.train_model(ts1, aT1, horizon, load1)
 model.forecast(ts2, aT2, horizon, load2)
+
+
+ts3=pd.DatetimeIndex(flxnet.Timestamp)[5760:5760+9600+48]
+load3=flxnet.kinnessPark_F4[5760:5760+9600+48]
+aT3=flxnet['Air Temperature'][5760:5760+9600+48]
+result=model.forecast(ts3, aT3, horizon, load3)
+error=result.Actual-result.Predicted
+error = error.reset_index(drop=True)
+
+half_error=error[:-4800]
+half_error = np.array(half_error)
+errors_reshaped = half_error.reshape((100,48))
+errors_reshaped=errors_reshaped.T
+means = np.mean(errors_reshaped, axis=1)
+covariances = np.cov(errors_reshaped, rowvar=True)
+error_list=[4800+48*i for i in range(100)]
+observer_error = error[error_list]
+observer_error = observer_error.reset_index(drop=True)
+updated_error = []
+for i in range(47):
+    column = []
+    for j in range(100):
+        updated_value = means[i+1] + covariances[0, i+1] * (covariances[0, 0]**(-1)) * (observer_error[j] - means[0])
+        column.append(updated_value)
+    updated_error.append(column)
+updated_error = np.vstack((observer_error, updated_error))
+secondhalf_error=error[4800:]
+secondhalf_error = np.array(secondhalf_error)
+secondhalf_error_reshaped = secondhalf_error.reshape((100,48))
+secondhalf_error=secondhalf_error_reshaped.T
+
+
+
+fig, axs = plt.subplots(4, 5, figsize=(15, 12))
+errors = []
+
+for i in range(20):
+    row = i // 5
+    col = i % 5
+
+    actual_values = secondhalf_error[:, i]
+    predicted_values = updated_error[:, i]
+    error = np.abs(actual_values - predicted_values)
+    errors.append(error)
+
+    axs[row, col].plot(list(range(48)), actual_values, color='blue', label='Actual error values')
+    axs[row, col].plot(list(range(48)), predicted_values, color='red', label='Predicted error values')
+    axs[row, col].set_title('Actual vs Predicted Values - Day {}'.format(i))
+    axs[row, col].legend()
+
+plt.tight_layout()  
+plt.show()
