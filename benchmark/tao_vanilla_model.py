@@ -2,6 +2,7 @@ import pandas as pd
 from sklearn import linear_model
 import numpy as np
 import matplotlib.pyplot as plt
+from multipledispatch import dispatch
 import scipy.stats as stats
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from datetime import datetime
@@ -96,17 +97,31 @@ class tao_vanilla_model:
         mxIdx=max(idx)
         error=Y-Yhat
         
-        self.muIntraday=np.array((self.resolution,1),dtype=float)
-        self.sigIntraday=np.array((self.resolution,self.resolution),dtype=float)
+        dys=(tstamp-tstamp[0]).days
+        errBlock=np.zeros((max(dys)+1,mxIdx+1))
 
-        for i in range(1,mxIdx):
-            self.muIntraday[i-1]=np.mean(error[idx==i],axis=0)
-            self.sigIntraday[i-1][i-1]=np.var(error[idx==i],axis=0)
+        for t in range(0,len(tstamp)):
+            errBlock[dys[t],idx[t]]=error[t]
 
-            for j in range(1,mxIdx):
-                cov=np.cov(error[idx==i],error[idx==j])
-                self.sigIntraday[i-1][j-1]=cov
-                self.sigIntraday[j-1][i-1]=cov
+        self.muIntraday=np.mean(errBlock,axis=0)
+        self.sigIntraday=np.cov(errBlock.T)
+
+        # self.muIntraday=np.zeros((self.resolution,1),dtype=float)
+        # self.sigIntraday=np.zeros((self.resolution,self.resolution),dtype=float)
+
+        # #try it this way...
+        # dys=(timestamp-timestamp[0]).days
+        # dy=max(dys)
+        # errorBlock=np.zeros((dy,self.resolution),dtype=float)
+
+        # for i in range(1,mxIdx):
+        #     self.muIntraday[i-1]=np.mean(error[idx==i],axis=0)
+        #     self.sigIntraday[i-1,i-1]=np.var(error[idx==i],axis=0)
+
+        #     for j in range(1,mxIdx):
+        #         cv=np.cov(error[idx==i],error[idx==j])
+        #         self.sigIntraday[i-1,j-1]=cv
+        #         self.sigIntraday[j-1,i-1]=cv
 
         ##not general - assumes a 48 HH resolution...
         #blockErr=np.reshape(error[0:-self.horizon-1],(-1,self.horizon))
@@ -115,10 +130,33 @@ class tao_vanilla_model:
 
         return self.muIntraday,self.sigIntraday
 
+    #returns expected value of errors for rest of day
+    #given a set of observed errors for the day
+    def reforecast_using_error_stats(self,errs,hrsObs,hrsAdj):
+        #partition up the covariance matrix
+        coo = self.sigIntraday[hrsObs,hrsObs]
+        coa = self.sigIntraday[hrsObs,hrsAdj]
+        cao = self.sigIntraday[hrsAdj,hrsObs]
+        caa = self.sigIntraday[hrsAdj,hrsAdj]
+
+        #partition up the mean
+        mo = self.muIntraday[hrsObs].T
+        ma = self.muIntraday[hrsAdj].T
+
+        #get the conditional mean
+        muBar = mo + coa@(np.linalg.inv(caa))@((errs-ma).T).T
+        
+        #get the conditional covariance (need to check this!)
+        covBar = caa-coa@cao@np.linalg.inv(coo)
+
+        return muBar,covBar
+
+    #@dispatch(None,list,list)
     def forecast(self,timestamp,temperature):
         return self.forecast(timestamp,temperature,self.horizon)
 
-    def forecast(self,timestamp,temperature,horizon):
+    #@dispatch(None,list,list,int)
+    def forecast(self,timestamp,temperature,horizon=None):
         #to do - if horizon is multiple of existing model - apply recursively
         #if not, apply recursively and interpolate
         hod=np.array(timestamp.hour)#roll these forward for increased horizons
@@ -151,9 +189,10 @@ taovanilla.save_model_to_disk('flex_networks_stlf.pkl')
 
 taovanilla2=tao_vanilla_model.load_model_from_disk('flex_networks_stlf.pkl')
 
-targetHat=taovanilla.forecast(ts2,aT,0)#wrong! won't recognise overloaded method though...
+targetHat=taovanilla.forecast(ts2,aT)#wrong! won't recognise overloaded method though...
 
 #next thing to do is turn the error into a mean and covariance
 muErr,sigErr=taovanilla.evaluate_error_stats(ts2,testTarget,targetHat)
 
 #estimate intra-day error using conditional Gaussian form of joint error
+#muErr[1:2]+sigErr[1:2,1:3]@sigErr[1:3,1:2]#lift from Matlab...

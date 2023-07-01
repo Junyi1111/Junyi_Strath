@@ -6,6 +6,7 @@ import pickle
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
+#no need to paste this in - just import it
 class tao_vanilla_model:
     def __init__(self, label='Linear Regression Benchmark Model')-> None:
         self.taovanilla = linear_model.LinearRegression()
@@ -76,6 +77,9 @@ class tao_vanilla_model:
 
 
 
+#should be able to delete the above and replace with:
+#from tao_vanilla_model import tao_vanilla_model
+#everything below is great and should still work...
 # Example usage:
 flxnet=pd.read_csv('https://raw.githubusercontent.com/Junyi1111/Junyi_Strath/main/benchmark/flex_networks.csv')
 ts1=pd.DatetimeIndex(flxnet.Timestamp)[:15984]
@@ -110,7 +114,7 @@ observer_error = observer_error.reset_index(drop=True)
 updated_error = []
 for i in range(47):
     column = []
-    for j in range(100):
+    for j in range(100):#can use the @ matrix multiplier
         updated_value = means[i+1] + covariances[0, i+1] * (covariances[0, 0]**(-1)) * (observer_error[j] - means[0])
         column.append(updated_value)
     updated_error.append(column)
