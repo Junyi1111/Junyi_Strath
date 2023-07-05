@@ -1,6 +1,3 @@
-import numpy as np
-import pandas as pd
-
 class DataProcessor:
     def __init__(self, file_path, top_n):
         self.file_path = file_path
@@ -13,10 +10,9 @@ class DataProcessor:
         self.data = pd.read_csv(self.file_path)
         
     def preprocess_data(self):
-        # Select top n columns with most non-NaN values (excluding 'TimeStamp')
         count_non_nan = np.count_nonzero(~pd.isna(self.data), axis=0)
         count_series = pd.Series(count_non_nan, index=self.data.columns)
-        top_cols = count_series.nlargest(self.top_n + 1)  # Include 'TimeStamp' in count
+        top_cols = count_series.nlargest(self.top_n + 1)
         self.data = self.data[top_cols.index]
 
     def filter_data(self):
@@ -37,13 +33,15 @@ class DataProcessor:
         self.data_avg.to_csv(save_path_avg, index=True)
         self.data_max.to_csv(save_path_max, index=True)
 
+    def process_data(self, save_path_avg, save_path_max):
+        self.load_data()
+        self.preprocess_data()
+        self.filter_data()
+        self.resample_data()
+        self.save_data(save_path_avg, save_path_max)
 
-# Use it like this
+
+# Usage
 num_columns = 20
 processor = DataProcessor('D:\\18 Battlefield Road substation\\C2C_average_power_final.csv', num_columns)
-processor.load_data()
-processor.preprocess_data()
-processor.filter_data()
-processor.resample_data()
-processor.save_data('D:\\18 Battlefield Road substation\\data_avg.csv', 'D:\\18 Battlefield Road substation\\data_max.csv')
-
+processor.process_data('D:\\18 Battlefield Road substation\\data_avg.csv', 'D:\\18 Battlefield Road substation\\data_max.csv')
