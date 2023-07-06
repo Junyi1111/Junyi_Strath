@@ -64,3 +64,37 @@ for i in range(5):
 plt.tight_layout()
 plt.show()
 
+
+from ErrorAnalysis import online_ErrorAnalysis
+online_error_analysis = online_ErrorAnalysis(result)
+result1 = online_error_analysis.online_estimation()
+updated_error = result1['updated_error']
+forecast=np.array(result.Predicted)
+forecast=forecast.reshape(-1, 48)
+update_forecast=updated_error[1:]+forecast[2:]
+actual_data=np.array(result.Actual).reshape(-1, 48)[2:]
+fig, ax = plt.subplots(2, 1, figsize=(10, 15))
+
+for i, (data, title) in enumerate(zip([actual_data, update_forecast], 
+                                       ['Result Update', 'original_forecast'])):
+    # Plot a box plot for each group of 48 data points
+    sns.boxplot(data=data, ax=ax[i])
+    ax[i].set_title(title)
+    ax[i].set_xlabel('Group number')
+    ax[i].set_ylabel('Value')
+
+plt.tight_layout()
+plt.show()
+
+fig, ax = plt.subplots(5, 1, figsize=(10, 15))
+
+# Plot line plots for the first 5 groups of 48 data points
+for i in range(5):
+    sns.lineplot(data=update_forecast[i, :], ax=ax[i], label='Result Update')
+    sns.lineplot(data=actual_data[i, :], ax=ax[i], label='Actual Load')
+    ax[i].set_title(f'Comparison Plot for Day {i+1} of 48 Data Points')
+    ax[i].set_xlabel('Data Point Index within the Group')
+    ax[i].set_ylabel('Value')
+
+plt.tight_layout()
+plt.show()
