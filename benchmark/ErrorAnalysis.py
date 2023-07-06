@@ -50,3 +50,31 @@ class ErrorAnalysis:
         mse_update = mean_squared_error(self.result.Actual[half_length:], self.result.Predicted[half_length:] + self.updated_error1)
         result_update = self.result.Predicted[half_length:] + self.updated_error1
         return {'mae_original': mae_original, 'mse_original': mse_original, 'mae_update': mae_update, 'mse_update': mse_update, 'result_update': result_update}
+
+   def online_estimation(self)
+       errors_reshaped = error.reshape(len(error), 48)
+       n = X.shape[1]
+       M = np.zeros((n, n))
+       mean = np.zeros((n, 1))
+       cov = np.zeros((n, n))
+       all_means = []
+       all_covs = []
+       error_list=[48*i for i in range(len(error//48)]
+       observer_error = error[error_list]
+       observer_error = observer_error.reset_index(drop=True)
+       update_error_all = []
+       for i in range(X.shape[0]):
+         column = []
+         x = X[i,:].reshape(n, 1)
+         delta = x - mean
+         mean = mean + delta / (i + 1)
+         M = M + delta.dot((x - mean).T)
+         cov = M / (i + 1) if i > 0 else M 
+         for j in range(47):
+            updated_value = means[j+1] + covariances[0, j+1] * (covariances[0, 0]**(-1)) * (observer_error[i] - means[0])
+            column.append(updated_value)
+         update_error_all.append(column)
+         all_means.append(mean.flatten())
+         all_covs.append(cov.flatten())
+      updated_error = np.vstack((observer_error, update_error_all.T))
+      return {'update_error_all':update_error_all}
