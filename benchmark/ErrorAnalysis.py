@@ -51,7 +51,16 @@ class ErrorAnalysis:
         result_update = self.result.Predicted[half_length:] + self.updated_error1
         return {'mae_original': mae_original, 'mse_original': mse_original, 'mae_update': mae_update, 'mse_update': mse_update, 'result_update': result_update}
 
-   def online_estimation(self):
+
+class online_ErrorAnalysis:
+    def __init__(self, result):
+        self.result = result
+        self.length = len(result)
+        self.error = result.Actual - result.Predicted
+        self.error = self.error.reset_index(drop=True)
+        self.updated_error1 = None
+
+    def online_estimation(self):
         error = self.result.Actual - self.result.Predicted
         error = np.array(error)
         errors_reshaped = error.reshape(len(error) // 48, 48)
@@ -81,5 +90,5 @@ class ErrorAnalysis:
         update_error_all = np.array(update_error_all)
         update_error_all = update_error_all.T
         updated_error = np.vstack((observer_error, update_error_all))
-        update_errorl = updated_error.T
-        return{'updated_error':update_errorl}
+        update_error1 = updated_error.T
+        return {'updated_error': update_error1}
