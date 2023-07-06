@@ -1,13 +1,7 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[ ]:
-
-
-from weather import WeatherData
-from tao_vanilla_model import tao_vanilla_model
 import numpy as np
 import pandas as pd
+from weather import WeatherData
+from tao_vanilla_model import tao_vanilla_model
 import seaborn as sns
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 import matplotlib.pyplot as plt
