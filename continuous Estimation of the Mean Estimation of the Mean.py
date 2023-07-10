@@ -3,7 +3,39 @@
 
 # In[ ]:
 
+import numpy as np
 
+class online_gaussian_estimator:
+    def __init__(self,dim=2):
+        self.dimension=dim
+        self.M = np.zeros((self.dimension,self.dimension))
+        self.mean = np.zeros((self.dimension,1))
+        self.cov = np.zeros((self.dimension,self.dimension))
+        self.runlength=0
+        
+    def online_estimate(self,x):
+        delta = x - self.mean
+        self.mean = self.mean + delta / (self.runlength + 1)
+        self.M = self.M + delta.dot((x - self.mean).T)
+        
+        if self.runlength > 0:
+            self.cov = M / (self.runlength + 1)
+        else:
+            self.M  # Adjust this line to compute population variance instead of sample variance
+        
+        self.runlength=self.runlength+1
+
+    def reset_run_length(self):
+        self.runlength=0
+
+    def generate_sample(self):
+        return np.mvn(self.mean,self.cov,1)
+
+
+#the trouble with this is that the function is not online - it takes
+#a whole data set and estimates from it, defeating the purpose...
+
+#it also appears to be R code?
 def online_estimator(X):
     n = X.shape[1]
     M = np.zeros((n, n))
