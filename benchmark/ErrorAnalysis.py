@@ -1,6 +1,7 @@
 import numpy as np
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
+
 class ErrorAnalysis:
     def __init__(self, result):
         self.result = result
@@ -19,14 +20,14 @@ class ErrorAnalysis:
         means = np.mean(errors_reshaped, axis=1)
         covariances = np.cov(errors_reshaped, rowvar=True)
 
-        error_list = [half_length + 48 * i for i in range(half_length // 48 )]
+        error_list = [half_length + 48 * i for i in range(half_length // 48)]
         observer_error = self.error[error_list]
         observer_error = observer_error.reset_index(drop=True)
 
         updated_error = []
         for i in range(47):
             column = []
-            for j in range(half_length// 48):
+            for j in range(half_length // 48):
                 updated_value = means[i + 1] + covariances[0, i + 1] * (covariances[0, 0] ** (-1)) * (
                         observer_error[j] - means[0])
                 column.append(updated_value)
@@ -46,10 +47,13 @@ class ErrorAnalysis:
         mae_original = mean_absolute_error(self.result.Actual[half_length:], self.result.Predicted[half_length:])
         mse_original = mean_squared_error(self.result.Actual[half_length:], self.result.Predicted[half_length:])
 
-        mae_update = mean_absolute_error(self.result.Actual[half_length:], self.result.Predicted[half_length:] + self.updated_error1)
-        mse_update = mean_squared_error(self.result.Actual[half_length:], self.result.Predicted[half_length:] + self.updated_error1)
+        mae_update = mean_absolute_error(self.result.Actual[half_length:],
+                                         self.result.Predicted[half_length:] + self.updated_error1)
+        mse_update = mean_squared_error(self.result.Actual[half_length:],
+                                        self.result.Predicted[half_length:] + self.updated_error1)
         result_update = self.result.Predicted[half_length:] + self.updated_error1
-        return {'mae_original': mae_original, 'mse_original': mse_original, 'mae_update': mae_update, 'mse_update': mse_update, 'result_update': result_update}
+        return {'mae_original': mae_original, 'mse_original': mse_original, 'mae_update': mae_update,
+                'mse_update': mse_update, 'result_update': result_update}
 
 
 class online_ErrorAnalysis:
@@ -61,6 +65,7 @@ class online_ErrorAnalysis:
         self.updated_error1 = None
 
     def online_estimation(self):
+
         error = self.result.Actual - self.result.Predicted
         error = np.array(error)
         errors_reshaped = error.reshape(len(error) // 48, 48)
@@ -77,14 +82,17 @@ class online_ErrorAnalysis:
             column = []
             x = errors_reshaped[i, :].reshape(n, 1)
             delta = x - mean
-            mean = mean + delta / (i + 1)
+            if i < 2:  # first two iterations
+                mean = mean + delta / (i + 1)
+            else:  # from third iteration onwards
+                for j in range(47):
+                    updated_value = mean[j + 1] + cov[0, j + 1] * (cov[0, 0] ** (-1)) * (observer_error[i] - mean[0])
+                    column.append(updated_value)
+                column.insert(0, observer_error[i])  # insert observer_error[i] at the beginning of column
+                mean = mean + delta / (i + 1) - np.array(column).reshape(n, 1)  # update mean
             M = M + delta.dot((x - mean).T)
             cov = M / (i + 1) if i > 0 else M
-            for j in range(47):
-                updated_value = mean[j + 1] + cov[0, j + 1] * (cov[0, 0] ** (-1)) * (observer_error[i] - mean[0])
-                column.append(updated_value)
-            column = np.hstack(column)
-            update_error_all.append(column)
+            update_error_all.append(np.array(column))  # convert column to numpy array before appending
             all_means.append(mean.flatten())
             all_covs.append(cov.flatten())
         update_error_all = np.array(update_error_all)
