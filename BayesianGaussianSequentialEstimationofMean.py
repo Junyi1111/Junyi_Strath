@@ -17,6 +17,7 @@ class BayesianGaussianSequentialEstimation:
         self.aN = self.a0
 
         self.adjust_errors = []
+        self.mN_history = []  # <-- list to hold the history of self.mN
 
     def update_parameters(self):
         for i in range(len(self.data)-1):
@@ -26,6 +27,8 @@ class BayesianGaussianSequentialEstimation:
             self.vN = self.v0 + N
             self.mN = (self.v0 * self.m0 + N * mean_w) / self.vN
             self.aN = self.a0 + N / 2
+
+            self.mN_history.append(self.mN)  # <-- record the value of self.mN at each step
 
             xi_delta = np.sum([np.outer(self.data[j, :self.dimension] - self.mN, self.data[j, :self.dimension] - self.mN) for j in range(N)], axis=0)
             xi_w = np.sum([self.data[j, :self.dimension] for j in range(N)])
@@ -37,13 +40,11 @@ class BayesianGaussianSequentialEstimation:
             Sigma11 = cov[:1, :1]
             Sigma12 = cov[:1, 1:]
             Sigma21 = cov[1:, :1]
-            Sigma22 = cov[1:, 1:]
-            #Sigma1_2 = Sigma11 - np.dot(np.dot(Sigma12, np.linalg.inv(Sigma22)), Sigma21)
-            adjust_error = self.mN[1:] + np.dot(np.dot(Sigma12, np.linalg.inv(Sigma22)), (self.data[i+1, 0] - self.mN[0]))
+            Sigma22 = np.diag(cov)[1:]
+            adjust_error = self.mN[1:] + np.dot((Sigma12/Sigma22), (self.data[i+1, 0] - self.mN[0]))
 
             adjust_error = np.insert(adjust_error, 0, self.data[i+1, 0])
 
             self.adjust_errors.append(adjust_error)
 
-        return self.adjust_errors
-
+        return self.adjust_errors, self.mN_history  # <-- also return the history of self.mN
